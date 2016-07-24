@@ -105,6 +105,8 @@ function initMap() {
         localStorage['map_style'] = 'roadmap';
     }
 
+    updateMapStyles();
+
     map.setMapTypeId(localStorage['map_style']);
     google.maps.event.addListener(map, 'idle', updateMap);
 
@@ -659,6 +661,46 @@ $('#scanned-switch').change(function() {
         map_scanned = {}
     }
 });
+
+$('#streetnames-switch').change(function() {
+    localStorage["showStreetNames"] = this.checked;
+	updateMapStyles();
+	var mapTypeId = map.mapTypeId;
+	// Probably a better way to refresh the map style than this...
+	map.setMapTypeId('');
+	map.setMapTypeId(mapTypeId);
+});
+
+var updateMapStyles = function() {
+	for(var mapType in map.mapTypes) {
+		if ( map.mapTypes.hasOwnProperty(mapType) && map.mapTypes[mapType].styles ) {
+			updateMapTypeStyle(map.mapTypes[mapType]);
+		}
+	}
+	
+	// Set styles for default maps
+	var roadLabelStyle = {featureType: "road",elementType: "labels", stylers: [{ visibility: localStorage["showStreetNames"] === "true" ? "on" : "off"}]};
+	map.setOptions({styles : [roadLabelStyle]});
+}
+
+var updateMapTypeStyle = function(mapType) {
+	var showStreetNames = localStorage["showStreetNames"] === "true";
+	
+	var roadLabelStyle = mapType.styles.find(function(s) { return s.featureType === "road" && s.elementType === "labels"});
+	
+	if ( !roadLabelStyle ) {
+		roadLabelStyle = {featureType: "road",elementType: "labels", stylers: [{ visibility: "" }]};
+		mapType.styles.push(roadLabelStyle);
+	}
+	
+	var visibilityStyler = roadLabelStyle.stylers.find(function(s){return "visibility" in s});
+	if ( visibilityStyler ) {
+		visibilityStyler.visibility = showStreetNames ? "on" : "off";
+	}
+	else {
+		roadLabelStyle.stylers.push({"visibility" : showStreetNames ? "on" : "off"});
+	}
+}
 
 var updateLabelDiffTime = function() {
     $('.label-countdown').each(function(index, element) {
