@@ -205,10 +205,21 @@ function excludePokemon(id) {
   ).trigger('change')
 }
 
-function notifyAboutPokemon(id) {
-  $selectNotify.val(
-    $selectNotify.val().concat(id)
-  ).trigger('change')
+function toggleNotifyPokemon(id) {
+  id = id.toString();
+  var selectedIds = $selectNotify.val();
+  var index = selectedIds.indexOf(id);
+
+  if ( index > -1) {
+    selectedIds.splice(index, 1);
+    $('.notify_' + id).text("Notify");
+  }
+  else {
+    selectedIds.push(id);
+    $('.notify_' + id).text("Unnotify");
+  }
+
+  $selectNotify.val(selectedIds).trigger('change')
 }
 
 function removePokemonMarker(encounter_id) {
@@ -370,20 +381,20 @@ function getTypeSpan(type) {
   return `<span style='padding: 2px 5px; text-transform: uppercase; color: white; margin-right: 2px; border-radius: 4px; font-size: 0.8em; vertical-align: text-bottom; background-color: ${type['color']}'>${type['type']}</span>`;
 }
 
-function pokemonLabel(name, rarity, types, disappear_time, id, latitude, longitude, encounter_id) {
-  var disappear_date = new Date(disappear_time);
-  var rarity_display = rarity ? '(' + rarity + ')' : "";
+function pokemonLabel(item) {
+  var disappear_date = new Date(item.disappear_time)
+  var rarity_display = item.pokemon_rarity ? '(' + item.pokemon_rarity + ')' : "";
   var types_display = "";
-  $.each(types, function(index, type) {
+  $.each(item.pokemon_types, function(index, type) {
     types_display += getTypeSpan(type);
   });
 
   var contentstring = `
     <div>
-      <b>${name}</b>
+      <b>${item.pokemon_name}</b>
       <span> - </span>
       <small>
-        <a href='http://www.pokemon.com/us/pokedex/${id}' target='_blank' title='View in Pokedex'>#${id}</a>
+        <a href='http://www.pokemon.com/us/pokedex/${item.pokemon_id}' target='_blank' title='View in Pokedex'>#${item.pokemon_id}</a>
       </small>
       <span> ${rarity_display}</span>
       <span> - </span>
@@ -391,16 +402,16 @@ function pokemonLabel(name, rarity, types, disappear_time, id, latitude, longitu
     </div>
     <div>
       Disappears at ${pad(disappear_date.getHours())}:${pad(disappear_date.getMinutes())}:${pad(disappear_date.getSeconds())}
-      <span class='label-countdown' disappears-at='${disappear_time}'>(00m00s)</span>
+      <span class='label-countdown' disappears-at='${item.disappear_time}'>(00m00s)</span>
     </div>
     <div>
-      Location: ${latitude.toFixed(6)}, ${longitude.toFixed(7)}
+      Location: ${item.latitude.toFixed(6)}, ${item.longitude.toFixed(7)}
     </div>
     <div>
-      <a href='javascript:excludePokemon(${id})'>Exclude</a>&nbsp;&nbsp;
-      <a href='javascript:notifyAboutPokemon(${id})'>Notify</a>&nbsp;&nbsp;
-      <a href='javascript:removePokemonMarker("${encounter_id}")'>Remove</a>&nbsp;&nbsp;
-      <a href='https://www.google.com/maps/dir/Current+Location/${latitude},${longitude}' target='_blank' title='View in Maps'>Get directions</a>
+      <a href='javascript:excludePokemon(${item.pokemon_id})'>Exclude</a>&nbsp;&nbsp;
+      <a href='javascript:toggleNotifyPokemon(${item.pokemon_id})' class="notify_${item.pokemon_id}">${(notifiedPokemon.indexOf(item.pokemon_id) > -1) ? 'Unnotify' : 'Notify'}</a>&nbsp;&nbsp;
+      <a href='javascript:removePokemonMarker("${item.encounter_id}")'>Remove</a>&nbsp;&nbsp;
+      <a href='https://www.google.com/maps/dir/Current+Location/${item.latitude},${item.longitude}' target='_blank' title='View in Maps'>Get directions</a>
     </div>`;
   return contentstring;
 }
@@ -572,12 +583,16 @@ function setupPokemonMarker(item, skipNotification, isBounceDisabled) {
   });
 
   marker.addListener('click', function() {
+    this.infoWindow.setContent(pokemonLabel(item));
     this.setAnimation(null);
     this.animationDisabled = true;
+  })
+
+  marker.addListener('mouseover', function() {
+    this.infoWindow.setContent(pokemonLabel(item));
   });
 
   marker.infoWindow = new google.maps.InfoWindow({
-    content: pokemonLabel(item.pokemon_name, item.pokemon_rarity, item.pokemon_types, item.disappear_time, item.pokemon_id, item.latitude, item.longitude, item.encounter_id),
     disableAutoPan: true
   });
 
